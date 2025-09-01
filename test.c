@@ -74,7 +74,7 @@ static void init_sbi(int fd)
 
 static void test_hole(void)
 {
-        struct numbfs_inode_info inode_i;
+        struct numbfs_inode_info ni;
         char wcontent[BYTES_PER_BLOCK];
         char rcontent[BYTES_PER_BLOCK];
         char zero[BYTES_PER_BLOCK];
@@ -90,24 +90,24 @@ static void test_hole(void)
         memset(zero, 0, BYTES_PER_BLOCK);
 
         /* get inode info */
-        inode_i.sbi = &sbi;
-        inode_i.nid = TEST_NID;
+        ni.sbi = &sbi;
+        ni.nid = TEST_NID;
 
-        assert(!numbfs_get_inode(&sbi, &inode_i));
+        assert(!numbfs_get_inode(&sbi, &ni));
 
-        assert(!numbfs_pwrite_inode(&inode_i, wcontent, TEST_BLK * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
+        assert(!numbfs_pwrite_inode(&ni, wcontent, TEST_BLK * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
         for (i = 0; i < TEST_BLK; i++) {
-                assert(!numbfs_pread_inode(&inode_i, rcontent, i * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
+                assert(!numbfs_pread_inode(&ni, rcontent, i * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
                 /* should be zero, since these blocks are all holes */
                 assert(!memcmp(rcontent, zero, BYTES_PER_BLOCK));
         }
 
-        assert(!numbfs_pread_inode(&inode_i, rcontent, TEST_BLK * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
+        assert(!numbfs_pread_inode(&ni, rcontent, TEST_BLK * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
         assert(!memcmp(rcontent, wcontent, BYTES_PER_BLOCK));
 
         /* write the middle block */
-        assert(!numbfs_pwrite_inode(&inode_i, wcontent, (TEST_BLK / 2) * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
-        assert(!numbfs_pread_inode(&inode_i, rcontent, (TEST_BLK / 2) * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
+        assert(!numbfs_pwrite_inode(&ni, wcontent, (TEST_BLK / 2) * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
+        assert(!numbfs_pread_inode(&ni, rcontent, (TEST_BLK / 2) * BYTES_PER_BLOCK, BYTES_PER_BLOCK));
         assert(!memcmp(wcontent, rcontent, BYTES_PER_BLOCK));
 
 #undef TEST_NID

@@ -115,19 +115,19 @@ static inline char *numbfs_dir_type(int type)
 static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
                                   int nid)
 {
-        struct numbfs_inode_info *inode_i;
+        struct numbfs_inode_info *ni;
         struct numbfs_dirent *dir;
         char buf[BYTES_PER_BLOCK];
         int err, i;
 
 
-        inode_i = malloc(sizeof(*inode_i));
-        if (!inode_i)
+        ni = malloc(sizeof(*ni));
+        if (!ni)
                 return -ENOMEM;
 
-        inode_i->nid = nid;
-        inode_i->sbi = sbi;
-        err = numbfs_get_inode(sbi, inode_i);
+        ni->nid = nid;
+        ni->sbi = sbi;
+        err = numbfs_get_inode(sbi, ni);
         if (err) {
                 fprintf(stderr, "error: failed to get inode information\n");
                 goto exit;
@@ -136,22 +136,22 @@ static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
         printf("================================\n");
         printf("Inode Information\n");
         printf("    inode number:               %d\n", nid);
-        if (S_ISDIR(inode_i->mode))
+        if (S_ISDIR(ni->mode))
                 printf("    inode type:                 DIR\n");
-        else if (S_ISLNK(inode_i->mode))
+        else if (S_ISLNK(ni->mode))
                 printf("    inode type:                 SYMLINK\n");
         else
                 printf("    inode type:                 REGULAR FILE\n");
-        printf("    link count:                 %d\n", inode_i->nlink);
-        printf("    inode uid:                  %d\n", inode_i->uid);
-        printf("    inode gid:                  %d\n", inode_i->gid);
-        printf("    inode size:                 %d\n\n", inode_i->size);
+        printf("    link count:                 %d\n", ni->nlink);
+        printf("    inode uid:                  %d\n", ni->uid);
+        printf("    inode gid:                  %d\n", ni->gid);
+        printf("    inode size:                 %d\n\n", ni->size);
 
-        if (S_ISDIR(inode_i->mode)) {
+        if (S_ISDIR(ni->mode)) {
                 printf("    DIR CONTENT\n");
-                for (i = 0; i < inode_i->size; i += sizeof(struct numbfs_dirent)) {
+                for (i = 0; i < ni->size; i += sizeof(struct numbfs_dirent)) {
                         if (i % BYTES_PER_BLOCK == 0) {
-                                err = numbfs_pread_inode(inode_i, buf, i, BYTES_PER_BLOCK);
+                                err = numbfs_pread_inode(ni, buf, i, BYTES_PER_BLOCK);
                                 if (err) {
                                         fprintf(stderr, "error: failed to read block@%d of inode@%d\n",
                                                 i / BYTES_PER_BLOCK, nid);
@@ -165,7 +165,7 @@ static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
         }
 
 exit:
-        free(inode_i);
+        free(ni);
         return err;
 }
 

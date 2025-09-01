@@ -87,15 +87,15 @@ int numbfs_free_block(struct numbfs_superblock_info *sbi, int blkno);
 
 /* get inode information according inode number*/
 int numbfs_get_inode(struct numbfs_superblock_info *sbi,
-                     struct numbfs_inode_info *inode_i);
+                     struct numbfs_inode_info *ni);
 /* logical block number to physical block address translation */
-int numbfs_inode_blkaddr(struct numbfs_inode_info *inode_i,
+int numbfs_inode_blkaddr(struct numbfs_inode_info *ni,
                          int pos, bool alloc, bool extent);
 
 /* read/write the logical block in inode's address space */
-int numbfs_pwrite_inode(struct numbfs_inode_info *inode_i,
+int numbfs_pwrite_inode(struct numbfs_inode_info *ni,
                         char buf[BYTES_PER_BLOCK], int offset, int len);
-int numbfs_pread_inode(struct numbfs_inode_info *inode_i,
+int numbfs_pread_inode(struct numbfs_inode_info *ni,
                        char buf[BYTES_PER_BLOCK], int offset, int len);
 
 int numbfs_alloc_inode(struct numbfs_superblock_info *sbi, int *nid);

@@ -297,17 +297,17 @@ static int numbfs_mkfs(void)
                 return err;
 
         memset(buf, 0, BYTES_PER_BLOCK);
-        sb = (struct numbfs_super_block*)buf;
-        sb->s_magic = NUMBFS_MAGIC;
-        sb->s_feature = cpu_to_le32(0);
-        sb->s_ibitmap_start = cpu_to_le32(sbi.ibitmap_start);
-        sb->s_inode_start = cpu_to_le32(sbi.inode_start);
-        sb->s_bbitmap_start = cpu_to_le32(sbi.bbitmap_start);
-        sb->s_data_start = cpu_to_le32(sbi.data_start);
-        sb->s_total_inodes = cpu_to_le32(sbi.total_inodes);
-        sb->s_free_inodes = cpu_to_le32(sbi.free_inodes);
-        sb->s_data_blocks = cpu_to_le32(sbi.data_blocks);
-        sb->s_free_blocks = cpu_to_le32(sbi.free_blocks);
+        sb                      = (struct numbfs_super_block*)buf;
+        sb->s_magic             = NUMBFS_MAGIC;
+        sb->s_feature           = cpu_to_le32(0);
+        sb->s_ibitmap_start     = cpu_to_le32(sbi.ibitmap_start);
+        sb->s_inode_start       = cpu_to_le32(sbi.inode_start);
+        sb->s_bbitmap_start     = cpu_to_le32(sbi.bbitmap_start);
+        sb->s_data_start        = cpu_to_le32(sbi.data_start);
+        sb->s_total_inodes      = cpu_to_le32(sbi.total_inodes);
+        sb->s_free_inodes       = cpu_to_le32(sbi.free_inodes);
+        sb->s_data_blocks       = cpu_to_le32(sbi.data_blocks);
+        sb->s_free_blocks       = cpu_to_le32(sbi.free_blocks);
 
         return numbfs_write_block(&sbi, buf, NUMBFS_SUPER_OFFSET / BYTES_PER_BLOCK);
 }

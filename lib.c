@@ -145,27 +145,27 @@ int numbfs_free_block(struct numbfs_superblock_info *sbi, int blkno)
                                   blkno, &sbi->free_blocks);
 }
 
-/* get the inode info at @inode_i->nid */
+/* get the inode info at @ni->nid */
 int numbfs_get_inode(struct numbfs_superblock_info *sbi,
-                     struct numbfs_inode_info *inode_i)
+                     struct numbfs_inode_info *ni)
 {
         struct numbfs_inode *inode;
         char buf[BYTES_PER_BLOCK];
         int err, i;
 
-        err = numbfs_read_block(sbi, buf, numbfs_inode_blk(sbi, inode_i->nid));
+        err = numbfs_read_block(sbi, buf, numbfs_inode_blk(sbi, ni->nid));
         if (err)
                 return err;
 
-        inode = ((struct numbfs_inode*)buf) + (inode_i->nid % NUMBFS_NODES_PER_BLOCK);
-        inode_i->sbi = sbi;
-        inode_i->mode   = le32_to_cpu(inode->i_mode);
-        inode_i->nlink  = le16_to_cpu(inode->i_nlink);
-        inode_i->uid    = le16_to_cpu(inode->i_uid);
-        inode_i->gid    = le16_to_cpu(inode->i_gid);
-        inode_i->size   = le32_to_cpu(inode->i_size);
+        inode = ((struct numbfs_inode*)buf) + (ni->nid % NUMBFS_NODES_PER_BLOCK);
+        ni->sbi = sbi;
+        ni->mode   = le32_to_cpu(inode->i_mode);
+        ni->nlink  = le16_to_cpu(inode->i_nlink);
+        ni->uid    = le16_to_cpu(inode->i_uid);
+        ni->gid    = le16_to_cpu(inode->i_gid);
+        ni->size   = le32_to_cpu(inode->i_size);
         for (i = 0; i < NUMBFS_NUM_DATA_ENTRY; i++)
-                inode_i->data[i] = le32_to_cpu(inode->i_data[i]);
+                ni->data[i] = le32_to_cpu(inode->i_data[i]);
 
         return 0;
 }
@@ -209,12 +209,12 @@ int numbfs_inode_blkaddr(struct numbfs_inode_info *inode, int pos, bool alloc, b
         return inode->data[pos / BYTES_PER_BLOCK];
 }
 
-static int numbfs_dump_inode(struct numbfs_inode_info *inode_i)
+static int numbfs_dump_inode(struct numbfs_inode_info *ni)
 {
-        struct numbfs_superblock_info *sbi = inode_i->sbi;
+        struct numbfs_superblock_info *sbi = ni->sbi;
         struct numbfs_inode *inode;
         char meta[BYTES_PER_BLOCK];
-        int nid = inode_i->nid;
+        int nid = ni->nid;
         int i, err;
 
         err = numbfs_read_block(sbi, meta, numbfs_inode_blk(sbi, nid));
@@ -222,14 +222,14 @@ static int numbfs_dump_inode(struct numbfs_inode_info *inode_i)
                 return err;
 
         inode = ((struct numbfs_inode*)meta) + (nid % NUMBFS_NODES_PER_BLOCK);
-        inode->i_ino    = cpu_to_le16(inode_i->nid);
-        inode->i_mode   = cpu_to_le32(inode_i->mode);
-        inode->i_nlink  = cpu_to_le16(inode_i->nlink);
-        inode->i_uid    = cpu_to_le16(inode_i->uid);
-        inode->i_gid    = cpu_to_le16(inode_i->gid);
-        inode->i_size   = cpu_to_le32(inode_i->size);
+        inode->i_ino    = cpu_to_le16(ni->nid);
+        inode->i_mode   = cpu_to_le32(ni->mode);
+        inode->i_nlink  = cpu_to_le16(ni->nlink);
+        inode->i_uid    = cpu_to_le16(ni->uid);
+        inode->i_gid    = cpu_to_le16(ni->gid);
+        inode->i_size   = cpu_to_le32(ni->size);
         for (i = 0; i < NUMBFS_NUM_DATA_ENTRY; i++)
-                inode->i_data[i] = cpu_to_le32(inode_i->data[i]);
+                inode->i_data[i] = cpu_to_le32(ni->data[i]);
 
         err = numbfs_write_block(sbi, meta, numbfs_inode_blk(sbi, nid));
         if (err) {
@@ -246,10 +246,10 @@ static int numbfs_dump_inode(struct numbfs_inode_info *inode_i)
         }
 
         inode = ((struct numbfs_inode*)meta) + (nid % NUMBFS_NODES_PER_BLOCK);
-        assert(inode->i_nlink == cpu_to_le16(inode_i->nlink));
-        assert(inode->i_size == cpu_to_le32(inode_i->size));
+        assert(inode->i_nlink == cpu_to_le16(ni->nlink));
+        assert(inode->i_size == cpu_to_le32(ni->size));
         for (i = 0; i < NUMBFS_NUM_DATA_ENTRY; i++)
-                assert(inode->i_data[i] == cpu_to_le32(inode_i->data[i]));
+                assert(inode->i_data[i] == cpu_to_le32(ni->data[i]));
 #endif
 
         return 0;
@@ -263,7 +263,7 @@ static int numbfs_dump_inode(struct numbfs_inode_info *inode_i)
  *
  * Note that this helper does not support cross-block write
  */
-int numbfs_pwrite_inode(struct numbfs_inode_info *inode_i,
+int numbfs_pwrite_inode(struct numbfs_inode_info *ni,
                         char buf[BYTES_PER_BLOCK], int offset, int len)
 {
         int target, err;
@@ -274,30 +274,30 @@ int numbfs_pwrite_inode(struct numbfs_inode_info *inode_i,
                 return -E2BIG;
 
         /* extend the inode size with holes */
-        inode_i->size = max(inode_i->size, offset + len);
+        ni->size = max(ni->size, offset + len);
 
-        target = numbfs_inode_blkaddr(inode_i, offset,
+        target = numbfs_inode_blkaddr(ni, offset,
                                       true, false);
         if (target < 0)
                 return target;
 
-        err = numbfs_read_block(inode_i->sbi, tmp,
-                        numbfs_data_blk(inode_i->sbi, target));
+        err = numbfs_read_block(ni->sbi, tmp,
+                        numbfs_data_blk(ni->sbi, target));
         if (err)
                 return err;
 
         memcpy(tmp + off, buf, len);
 
-        err = numbfs_write_block(inode_i->sbi, tmp,
-                        numbfs_data_blk(inode_i->sbi, target));
+        err = numbfs_write_block(ni->sbi, tmp,
+                        numbfs_data_blk(ni->sbi, target));
         if (err)
                 return err;
 
-        return numbfs_dump_inode(inode_i);
+        return numbfs_dump_inode(ni);
 }
 
 /* read the blkaddr-th block in the address space */
-int numbfs_pread_inode(struct numbfs_inode_info *inode_i,
+int numbfs_pread_inode(struct numbfs_inode_info *ni,
                        char buf[BYTES_PER_BLOCK], int offset, int len)
 {
         int target, err;
@@ -307,18 +307,18 @@ int numbfs_pread_inode(struct numbfs_inode_info *inode_i,
         if (off + len > BYTES_PER_BLOCK)
                 return -E2BIG;
 
-        target = numbfs_inode_blkaddr(inode_i, offset, false, false);
+        target = numbfs_inode_blkaddr(ni, offset, false, false);
         if (target < 0 && target != NUMBFS_HOLE)
                 return target;
 
         /* read a hole */
-        if (offset >= inode_i->size || target == NUMBFS_HOLE) {
+        if (offset >= ni->size || target == NUMBFS_HOLE) {
                 memset(buf, len, BYTES_PER_BLOCK);
                 return 0;
         }
 
-        err = numbfs_read_block(inode_i->sbi, tmp,
-                        numbfs_data_blk(inode_i->sbi, target));
+        err = numbfs_read_block(ni->sbi, tmp,
+                        numbfs_data_blk(ni->sbi, target));
         if (err)
                 return err;
 

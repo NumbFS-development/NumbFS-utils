@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 
 #define FILE_SIZE (10 * 1024 * 1024) // 10MB
 #define TEST_NUM_INODES 4096
@@ -219,6 +220,38 @@ static void test_inode_management(void)
 
 }
 
+static long dis(long a, long b)
+{
+        return a > b ? a - b : b - a;
+}
+
+static void test_timestamps(void)
+{
+#define TIME_DELTA      3
+        struct numbfs_inode_info ni;
+        struct numbfs_timestamps *nt;
+        char buf[BYTES_PER_BLOCK];
+        long start = time(NULL);
+        int nid;
+
+        nid = numbfs_empty_dir(&sbi, NUMBFS_ROOT_NID);
+        assert(nid >= 0);
+
+        ni.nid = nid;
+        ni.sbi = &sbi;
+        assert(!numbfs_get_inode(&sbi, &ni));
+
+        assert(!numbfs_read_block(&sbi, buf, numbfs_data_blk(&sbi, ni.xattr_start)));
+
+        nt = (struct numbfs_timestamps*)buf;
+        assert(dis(le64_to_cpu(nt->t_atime), start) < TIME_DELTA);
+        assert(dis(le64_to_cpu(nt->t_ctime), start) < TIME_DELTA);
+        assert(dis(le64_to_cpu(nt->t_mtime), start) < TIME_DELTA);
+
+#undef TIME_DELTA
+
+}
+
 int main() {
         const char *filename = "./numbfs_test_file_xxx";
         int fd = open(filename, O_RDWR | O_CREAT, 0644);
@@ -233,6 +266,7 @@ int main() {
         test_byte_rw();
         test_block_management();
         test_inode_management();
+        test_timestamps();
 
         close(fd);
         assert(remove(filename) == 0);

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #define DOT             "."
 #define DOTDOT          ".."
@@ -166,6 +167,7 @@ int numbfs_get_inode(struct numbfs_superblock_info *sbi,
         ni->size   = le32_to_cpu(inode->i_size);
         for (i = 0; i < NUMBFS_NUM_DATA_ENTRY; i++)
                 ni->data[i] = le32_to_cpu(inode->i_data[i]);
+        ni->xattr_start = le32_to_cpu(inode->i_xattr_start);
 
         return 0;
 }
@@ -230,6 +232,7 @@ static int numbfs_dump_inode(struct numbfs_inode_info *ni)
         inode->i_size   = cpu_to_le32(ni->size);
         for (i = 0; i < NUMBFS_NUM_DATA_ENTRY; i++)
                 inode->i_data[i] = cpu_to_le32(ni->data[i]);
+        inode->i_xattr_start = cpu_to_le32(ni->xattr_start);
 
         err = numbfs_write_block(sbi, meta, numbfs_inode_blk(sbi, nid));
         if (err) {
@@ -345,6 +348,32 @@ int numbfs_free_inode(struct numbfs_superblock_info *sbi, int nid)
                                   &sbi->free_inodes);
 }
 
+static int numbfs_update_timestaps(struct numbfs_inode_info *inode,
+                                   long time)
+{
+        struct numbfs_superblock_info *sbi = inode->sbi;
+        struct numbfs_timestamps *nt;
+        char buf[BYTES_PER_BLOCK];
+        int err, blk;
+
+        err = numbfs_alloc_block(inode->sbi, &blk);
+        if (err)
+                return err;
+
+        memset(buf, 0, sizeof(buf));
+        nt = (struct numbfs_timestamps*)buf;
+        nt->t_atime = time;
+        nt->t_mtime = time;
+        nt->t_ctime = time;
+
+        err = numbfs_write_block(sbi, buf, numbfs_data_blk(sbi, blk));
+        if (err)
+                return err;
+
+        inode->xattr_start = blk;
+        return 0;
+}
+
 int numbfs_empty_dir(struct numbfs_superblock_info *sbi, int pnid)
 {
         struct numbfs_inode_info inode;
@@ -381,6 +410,11 @@ int numbfs_empty_dir(struct numbfs_superblock_info *sbi, int pnid)
         dir->ino = cpu_to_le16(pnid);
         dir->type = DT_DIR;
         inode.size += sizeof(struct numbfs_dirent);
+
+        /* update timestaps */
+        err = numbfs_update_timestaps(&inode, (long)time(NULL));
+        if (err)
+                return err;
 
         err = numbfs_pwrite_inode(&inode, buf, 0, inode.size);
         if (err)

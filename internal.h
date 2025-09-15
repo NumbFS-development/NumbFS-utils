@@ -37,6 +37,7 @@ struct numbfs_inode_info {
         int gid;
         int size;
         int data[NUMBFS_NUM_DATA_ENTRY];
+        int xattr_start;
 };
 
 #define NUMBFS_BLOCKS_PER_BLOCK (BYTES_PER_BLOCK * BITS_PER_BYTE)

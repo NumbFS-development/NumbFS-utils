@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <time.h>
 
 static struct option long_options[] = {
         {"help", no_argument, NULL, 'h'},
@@ -111,6 +112,14 @@ static inline char *numbfs_dir_type(int type)
                 return "REGULAR";
 }
 
+static void numbfs_time_to_date(char buf[BYTES_PER_BLOCK], long time)
+{
+        struct tm *timeinfo = localtime((time_t*)&time);
+
+        memset(buf, 0, BYTES_PER_BLOCK);
+        strftime(buf, BYTES_PER_BLOCK, "%Y-%m-%d %H:%M:%S", timeinfo);
+}
+
 /* show the inode information at @nid */
 static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
                                   int nid)
@@ -118,6 +127,7 @@ static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
         struct numbfs_inode_info *ni;
         struct numbfs_dirent *dir;
         char buf[BYTES_PER_BLOCK];
+        struct numbfs_timestamps nt;
         int err, i;
 
 
@@ -133,6 +143,14 @@ static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
                 goto exit;
         }
 
+        err = numbfs_read_block(sbi, buf, numbfs_data_blk(sbi, ni->xattr_start));
+        if (err) {
+                fprintf(stderr, "error: failed to read xattr block\n");
+                goto exit;
+        }
+
+        nt = *(struct numbfs_timestamps*)buf;
+
         printf("================================\n");
         printf("Inode Information\n");
         printf("    inode number:               %d\n", nid);
@@ -145,6 +163,12 @@ static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
         printf("    link count:                 %d\n", ni->nlink);
         printf("    inode uid:                  %d\n", ni->uid);
         printf("    inode gid:                  %d\n", ni->gid);
+        numbfs_time_to_date(buf, le64_to_cpu(nt.t_atime));
+        printf("    inode atime:                %s\n", buf);
+        numbfs_time_to_date(buf, le64_to_cpu(nt.t_mtime));
+        printf("    inode mtime:                %s\n", buf);
+        numbfs_time_to_date(buf, le64_to_cpu(nt.t_ctime));
+        printf("    inode ctime:                %s\n", buf);
         printf("    inode size:                 %d\n\n", ni->size);
 
         if (S_ISDIR(ni->mode)) {

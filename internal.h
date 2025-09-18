@@ -38,6 +38,7 @@ struct numbfs_inode_info {
         int size;
         int data[NUMBFS_NUM_DATA_ENTRY];
         int xattr_start;
+        int xattr_count;
 };
 
 #define NUMBFS_BLOCKS_PER_BLOCK (BYTES_PER_BLOCK * BITS_PER_BYTE)

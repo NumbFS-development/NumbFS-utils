@@ -81,13 +81,26 @@ struct numbfs_timestamps {
 	__u8 reserved[8];
 };
 
+/* xattr name indexes */
+#define NUMBFS_XATTR_INDEX_USER              1
+#define NUMBFS_XATTR_INDEX_TRUSTED           2
+
+#define NUMBFS_XATTR_MAXNAME	16
+#define NUMBFS_XATTR_MAXVALUE	32
+
 /* on-disk xattr entry */
 struct numbfs_xattr_entry {
 	__u8 e_valid;
-	__le16 e_name_len;
-	__le16 e_value_len;
-	__le16 e_start;
+	__u8 e_type;
+	__u8 e_nlen;
+	__u8 e_vlen;
+	__u8 e_name[NUMBFS_XATTR_MAXNAME];
+	__u8 e_value[NUMBFS_XATTR_MAXVALUE];
 };
+
+#define NUMBFS_XATTR_MAX_ENTRY \
+	((BYTES_PER_BLOCK - sizeof(struct numbfs_timestamps)) / sizeof(struct numbfs_xattr_entry))
+#define NUMBFS_XATTR_ENTRY_START	(sizeof(struct numbfs_timestamps))
 
 /* check the on-disk layout at compile time */
 static inline void numbfs_check_ondisk(void)

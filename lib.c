@@ -168,6 +168,7 @@ int numbfs_get_inode(struct numbfs_superblock_info *sbi,
         for (i = 0; i < NUMBFS_NUM_DATA_ENTRY; i++)
                 ni->data[i] = le32_to_cpu(inode->i_data[i]);
         ni->xattr_start = le32_to_cpu(inode->i_xattr_start);
+        ni->xattr_count = inode->i_xattr_count;
 
         return 0;
 }
@@ -385,6 +386,7 @@ int numbfs_empty_dir(struct numbfs_superblock_info *sbi, int pnid)
         if (err)
                 return err;
 
+        memset(&inode, 0, sizeof(struct numbfs_inode_info));
         inode.nid = nid;
         inode.sbi = sbi;
         inode.mode = S_IFDIR | 0755;

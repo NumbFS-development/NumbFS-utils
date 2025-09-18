@@ -120,6 +120,49 @@ static void numbfs_time_to_date(char buf[BYTES_PER_BLOCK], long time)
         strftime(buf, BYTES_PER_BLOCK, "%Y-%m-%d %H:%M:%S", timeinfo);
 }
 
+static void numbfs_dump_xattrs(struct numbfs_inode_info *ni)
+{
+        char buf[BYTES_PER_BLOCK];
+        struct numbfs_xattr_entry *xe;
+        char name[NUMBFS_XATTR_MAXNAME], value[NUMBFS_XATTR_MAXVALUE];
+        int err, i, j;
+
+
+        if (!ni->xattr_count)
+                return;
+
+        err = numbfs_read_block(ni->sbi, buf, numbfs_data_blk(ni->sbi, ni->xattr_start));
+        if (err) {
+                fprintf(stderr, "error: failed to read xattr block\n");
+                return;
+        }
+
+        printf("    -------\n");
+        printf("    xattrs (count: %d)\n", ni->xattr_count);
+        xe = (struct numbfs_xattr_entry*)(buf + NUMBFS_XATTR_ENTRY_START);
+        for (i = 0; i < (int)NUMBFS_XATTR_MAX_ENTRY; i++, xe++) {
+                int front;
+
+                if (!xe->e_valid)
+                        continue;
+
+                memset(name, 0, sizeof(name));
+                memset(value, 0, sizeof(value));
+
+                front = NUMBFS_XATTR_MAXNAME - xe->e_nlen - 1;
+                for (j = 0; j < front; j++)
+                        name[j + xe->e_nlen] = ' ';
+                memcpy(name, xe->e_name, xe->e_nlen);
+
+                front = NUMBFS_XATTR_MAXVALUE - xe->e_vlen - 1;
+                for (j = 0; j < front; j++)
+                        value[j + xe->e_vlen] =  ' ';
+                memcpy(value, xe->e_value, xe->e_vlen);
+                printf("        type: %02d, name: %s, value: %s\n", xe->e_type, name, value);
+        }
+        printf("    -------\n");
+}
+
 /* show the inode information at @nid */
 static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
                                   int nid)
@@ -169,7 +212,9 @@ static int numbfs_fsck_show_inode(struct numbfs_superblock_info *sbi,
         printf("    inode mtime:                %s\n", buf);
         numbfs_time_to_date(buf, le64_to_cpu(nt.t_ctime));
         printf("    inode ctime:                %s\n", buf);
-        printf("    inode size:                 %d\n\n", ni->size);
+        printf("    inode size:                 %d\n", ni->size);
+        numbfs_dump_xattrs(ni);
+        printf("\n");
 
         if (S_ISDIR(ni->mode)) {
                 printf("    DIR CONTENT\n");
